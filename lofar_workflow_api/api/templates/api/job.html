@@ -1,0 +1,63 @@
+{% load static %}
+{% load fontawesome %}
+<!DOCTYPE html>
+<html>
+    <head>
+        <!-- {% fontawesome_stylesheet %} -->
+        <meta charset="utf-8"/>
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
+        <title>Job Details</title>
+    </head>
+    <body>
+        <h2>Job: {{ jobid }} Status: {{ jobState }}</h2>
+        <input type="hidden" id="jobstate" name="variable" value="{{ jobState }}">
+        <span>
+            {% if jobState == 'Waiting' %}
+            {% fontawesome_icon 'pause' color='blue' large=True %}
+            {% endif %}
+            {% if jobState == 'Running' %}
+            {% fontawesome_icon 'cog' %}
+            {% endif %}
+            {% if jobState == 'Success' %}
+            {% fontawesome_icon 'check' %}
+            {% endif %}
+            {% if jobState == 'Cancelled' %}
+            {% fontawesome_icon 'ban' %}
+            {% endif %}
+            {% if jobState == 'PermanentFailure' %}
+            {% fontawesome_icon 'times' %}
+            {% endif %}
+            {% if jobState == 'SystemError' %}
+            {% fontawesome_icon 'times' %}
+            {% endif %}
+            {% if jobState == 'TemporaryFailure' %}
+            {% fontawesome_icon 'exclamation-triangle' %}
+            {% endif %}
+        </span>
+    </body>
+    <script>
+        var jobId = '{{ jobid }}';
+        var jobState = '{{ jobState }}';
+        var jobSocket = new WebSocket(
+                                   'ws://' + window.location.host +
+                                   '/ws/api/' + jobId + '/');
+                                   
+                                   jobSocket.onopen = function(e) {
+                                       jobSocket.send(JSON.stringify({
+                                                                 'jobid': jobId,
+                                                                 'jobstate': jobState
+                                                                 }));
+                                   };
+                                   jobSocket.onmessage = function(e) {
+                                       console.log('jobSocket.onmessage()')
+                                       var data = JSON.parse(e.data);
+                                       var jobstate = data['jobstate']
+                                       var jsInputDom = document.querySelector('#jobstate');
+                                       jsInputDom.value = jobstate;
+                                       console.log(jsInputDom.value)
+                                   };
+    jobSocket.onclose = function(e) {
+        console.error('Job socket closed unexpectedly');
+    };
+    </script>
+</html>

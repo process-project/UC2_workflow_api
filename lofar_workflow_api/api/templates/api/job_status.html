@@ -1,0 +1,31 @@
+{% load fontawesome %}
+<!doctype html>
+<html lang="en">
+<head>
+    {% fontawesome_stylesheet %}
+</head>
+
+<body>
+    <h2> {% jobId %} </h2>
+    <span class="sr-only">
+        {% if jobState == 'Waiting' %}
+        {% fontawesome_icon 'pause' %}
+        {% endif %}
+        {% if jobState == 'Running' %}
+        {% fontawesome_icon 'cog' %}
+        {% endif %}
+        {% if jobState == 'Success' %}
+        {% fontawesome_icon 'check' %}
+        {% endif %}
+        {% if jobState == 'Cancelled' %}
+        {% fontawesome_icon 'ban' %}
+        {% endif %}
+        {% if jobState == 'PermanentFailure' || job.state =='SystemError' %}
+        {% fontawesome_icon 'times' %}
+        {% endif %}
+        {% if jobState == 'TemporaryFailure' %}
+        {% fontawesome_icon 'exclamation-triangle' %}
+        {% endif %}
+    </span>
+</body>
+</html>

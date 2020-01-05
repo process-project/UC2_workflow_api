@@ -1,0 +1,97 @@
+{% load static %}
+{% load rest_framework %}
+{% load fontawesome %}
+
+<head>
+    <title>Session Viewer</title>
+    
+    {% fontawesome_stylesheet %}
+    <!--link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous"-->
+        
+
+    <script type="text/javascript">
+        
+     function draw() {
+         // Loop through all images
+         for (var i = 0; i < document.images.length; i++) {
+            // Create canvas element
+            canvas = document.createElement('canvas');
+            canvas.setAttribute('width', 700);
+            canvas.setAttribute('height', 750);
+            // Insert before the image
+            document.images[i].parentNode.insertBefore(canvas,document.images[i]);
+            ctx = canvas.getContext('2d');
+            // Draw image to canvas
+            ctx.drawImage(document.images[i], 15, 20);
+         }
+     }
+     </script>
+    
+    <style>
+        body {
+            background: 0 -100px repeat-x #FFFFFF;
+            margin: 10px;
+        }
+    
+        img {
+            display: none;
+        }
+    
+        table {
+            margin: 0 auto;
+        }
+    
+        td {
+            padding: 15px;
+        }
+    
+        div {
+            padding: 15px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+
+<html><body onload="draw();">
+    
+    <h1>Session ID: {{ session.id }}</h1>
+    
+    <div>Observation: {{ session.observation }}</div>
+
+    <div>Xenon-flow Job ID: {{ session.pipeline_response }}</div>
+    
+    <div>
+        Xenon-flow Job Status:
+        <span>
+            {% if session.status == 'Waiting' %}
+            {% fontawesome_icon 'pause' %}
+            {% endif %}
+            {% if session.status == 'Running' %}
+            {% fontawesome_icon 'cog' %}
+            {% endif %}
+            {% if session.status == 'Success' %}
+            {% fontawesome_icon 'check' %}
+            {% endif %}
+            {% if session.status == 'Cancelled' %}
+            {% fontawesome_icon 'ban' %}
+            {% endif %}
+            {% if session.status == 'PermanentFailure' %}
+            {% fontawesome_icon 'times' %}
+            {% endif %}
+            {% if session.status == 'SystemError' %}
+            {% fontawesome_icon 'times' %}
+            {% endif %}            {% if session.status == 'TemporaryFailure' %}
+            {% fontawesome_icon 'exclamation-triangle' %}
+            {% endif %}
+        </span>
+        ({{ session.status }})
+    </div>
+    
+    <table>
+        <tr>
+            <td><img src="{{ session.rw_fits }}"></td>
+            <td><img src="{{ session.di_fits }}"></td>
+        </tr>
+    </table>
+
+</body></html>

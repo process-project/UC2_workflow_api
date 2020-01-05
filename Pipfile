@@ -1,0 +1,22 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[requires]
+python_version = ">3.3"
+
+[dev-packages]
+
+[packages]
+couchdb = "*"
+django = "*"
+djangorestframework = "*"
+lgppp-lofar-pipeline = {ref = "master",git = "https://github.com/EOSC-LOFAR/LGPPP_LOFAR_pipeline.git"}
+jsonfield = "*"
+prefactor-lofar-pipeline = {ref = "master", git = "https://github.com/souley/PROCESS-UC2.git"}
+requests = "*"
+django-fontawesome = "*"
+fabric = "*"
+matplotlib = "*"
+aplpy = "*"
