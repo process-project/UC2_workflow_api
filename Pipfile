@@ -4,7 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [requires]
-python_version = ">3.3"
+python_version = "3.7"
 
 [dev-packages]
 
@@ -14,9 +14,11 @@ django = "*"
 djangorestframework = "*"
 lgppp-lofar-pipeline = {ref = "master",git = "https://github.com/EOSC-LOFAR/LGPPP_LOFAR_pipeline.git"}
 jsonfield = "*"
-prefactor-lofar-pipeline = {ref = "master", git = "https://github.com/souley/PROCESS-UC2.git"}
+#prefactor-lofar-pipeline = {ref = "master", git = "https://github.com/souley/PROCESS-UC2.git"}
+uc2-lofar-pipeline = {ref = "master", git = "https://github.com/process-project/UC2_pipeline.git"}
 requests = "*"
-django-fontawesome = "*"
+#django-fontawesome = "*"
+fontawesome = "*"
 fabric = "*"
 matplotlib = "*"
 aplpy = "*"
