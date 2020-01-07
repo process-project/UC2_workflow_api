@@ -374,8 +374,6 @@ class SessionView(APIView):
     """
     def transfer_data(self, session):
         print("=SessionView::transfer_data() staging complete, start transferring ...")
-        webhook = "http://localhost:8000/transfer/" #+ str(session.stage_reqid)
-#        webhook = "http://d627e9bd.ngrok.io"
         srmuris = ["srm://srm.grid.sara.nl:8443/pnfs/grid.sara.nl/data/lofar/ops/projects/lofarschool/246403/L246403_SAP000_SB000_uv.MS_7d4aa18f.tar"]
 #        tarfiles = session.observation.split("|")
 #        srmuris = [ tarfiles[0] ] # testing
@@ -404,55 +402,39 @@ class SessionView(APIView):
                     "hpcPassword": hpc_cfg["pwd"]
                 }
             },
-            "webhook": {
-                "method": "post",
-                "url": webhook,
-                "headers": headers
-            },
             "options": {}
         }
         res = requests.post(url, headers=headers, data=json.dumps(data))
-        if res.status_code == requests.codes.ok:
-            print("=SessionView::transfer_data() res raw: ", res.content)
+        print("=SessionView::transfer_data() res raw: ", res.content)
+        print("=SessionView::transfer_data() res status_code: ", res.status_code)
+        if res.status_code == requests.codes.ok or res.status_code == 202:
+            print("=SessionView::transfer_data() res raw2: ", res.content)
             res_data = json.loads(res.content.decode("utf8"))
             print("=SessionView::transfer_data() res json: ", res_data)
+            session.pipeline_response = res_data['requestId']
+            session.save()
 
 
     """
         Checks whether transfer has completed
     """
     def is_transfer_complete(self, session):
-        print("=SessionView::is_transfer_complete() ...")
-        url = "http://localhost:8000/transfer/" #+ str(session.stage_reqid)
-#        url = "http://d627e9bd.ngrok.io"
+        print("=SessionView::is_transfer_complete() pp_resp: ", session.pipeline_response)
+        url = 'http://145.100.130.145:32015/status/' + session.pipeline_response
         headers = {
             'Content-Type': 'application/json'
         }
         data = {}
-        #        print("=SessionView::is_transfer_complete() req data", data)
-        res = requests.post(url, headers={}, data=json.dumps(data))
-        print("=SessionView::is_transfer_complete(): res raw => ", res.content)
-#        if res.content == b'':
-#            session.status = "Waiting"
-##            session.pipeline_response = "TransferDone"
-#            session.save()
-#            return True
-#        return False
-        if res.status_code == requests.codes.ok or res.content == b'':
-#            if res.content == b'':
-            session.status = "Waiting"
-            session.save()
-            return True
-#        if res.status_code == requests.codes.ok or res.content == b'':
-#            if res.content != b'':
-#                res_data = json.loads(res.content.decode("utf8"))
-#                print("=SessionView::is_transfer_complete(): res json => ", res_data)
-#                srmuris = session.observation.split("|")
-##            if res_data and set(res_data["surls"]) == set(srmuris):
-#                if res_data and res_data["surls"] == srmuris[0]:
-#                    session.status = "Waiting"
-#                    session.save()
-#                    return True
+        res = requests.get(url, headers={}, data=json.dumps(data))
+        print("=SessionView::is_transfer_complete() res raw: ", res.content)
+        if res.status_code == requests.codes.ok:
+            print("=SessionView::is_transfer_complete() res raw2: ", res.content)
+            res_data = json.loads(res.content.decode("utf8"))
+            print("=SessionView::is_transfer_complete() res json: ", res_data)
+            if session.pipeline_response == res_data['requestId'] and "finished" == res_data['status']:
+                session.status = "TransferDone"
+                session.save()
+                return True
         return False
 
 
@@ -553,7 +535,6 @@ class SessionView(APIView):
                 session.save()
             elif session.status == "Transferring":
                 if self.is_transfer_complete(session):
-#            if session.status == "Waiting":
                     session.pipeline_response = self.start_computation(session)
                     session.status = "Running"
                     session.save()
