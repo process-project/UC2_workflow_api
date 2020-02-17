@@ -16,10 +16,6 @@ from . import views
 import json
 import requests
 
-#from .consumers import jobState
-#import tempfile
-#from PIL import Image
-
 from django.conf import settings
 
 from rest_framework.renderers import TemplateHTMLRenderer
@@ -29,8 +25,11 @@ from fabric import Connection
 import matplotlib
 matplotlib.use('Agg')
 import aplpy
+
 # For benchmarking
 import time
+
+import re
 
 # Put this on for authentications
 authentication_on = False
@@ -101,12 +100,10 @@ class CreateSessionsView(APIView):
                 pipeline_res = \
                     get_available_pipelines()[current_session.pipeline].run_pipeline(current_session.observation, **current_session.config)
 
-#                print('===Session data from api.views.py')
-                print(pipeline_res.content) # = b'{"id": "staging", "requestId": 58241}'
-                res_data = json.loads(pipeline_res.content.decode("utf8"))
-#                current_session.stageid = res_data['id']
+#smtest                print(pipeline_res.content) # = b'{"id": "staging", "requestId": 58241}'
+#smtest                res_data = json.loads(pipeline_res.content.decode("utf8"))
                 current_session.pipeline_version = get_available_pipelines()[current_session.pipeline].give_version()
-                current_session.stage_reqid = res_data['requestId']
+#smtest                current_session.stage_reqid = res_data['requestId']
                 #                current_session.status = "started"
                 current_session.save()
                 #                res_data = json.loads(current_session.pipeline_response.content.decode("utf8"))
@@ -374,9 +371,14 @@ class SessionView(APIView):
     """
     def transfer_data(self, session):
         print("=SessionView::transfer_data() staging complete, start transferring ...")
-        srmuris = ["srm://srm.grid.sara.nl:8443/pnfs/grid.sara.nl/data/lofar/ops/projects/lofarschool/246403/L246403_SAP000_SB000_uv.MS_7d4aa18f.tar"]
-#        tarfiles = session.observation.split("|")
-#        srmuris = [ tarfiles[0] ] # testing
+#        srmuris = ["srm://srm.grid.sara.nl:8443/pnfs/grid.sara.nl/data/lofar/ops/projects/lofarschool/246403/L246403_SAP000_SB000_uv.MS_7d4aa18f.tar"]
+        tarfiles = session.observation.split("|")
+#        srmuris = tarfiles[:1] # testing
+        srmuris = [] #tarfiles[:20] # testing
+        for tfile in tarfiles:
+            if re.search('SB0[0|1]', tfile):
+                srmuris.append(tfile)
+
         url = 'http://145.100.130.145:32015/execute'
         headers = {
             'Content-Type': 'application/json',
@@ -446,16 +448,33 @@ class SessionView(APIView):
         headers = {
             'Content-Type': 'application/json',
         }
-        data = {
-            "input": {}
-        }
         cfg = session.config
+        hpc = cfg["hpc"]
+        oneTar = session.observation.split("|")[0]
+        oneMS = oneTar.split("/")[-1]
+        obsid = oneMS.split("_")[0][1:]
+        print("===obsid: ", obsid)
+        data = {
+            "input": {
+                "cfg_src": hpc["cfgsrc"],
+                "obs": obsid,
+                "pf_out": hpc["pf_out"],
+                "prefactor": hpc["prefactor"],
+                "workdir": hpc["workdir"],
+                "datadir": hpc["datadir"],
+                "container": hpc["container"],
+                "binddir": hpc["binddir"],
+                "fac_src": hpc["fac_src"],
+                "WMS": hpc["WMS"]
+            }
+        }
         url = cfg["hpc"]["xenon"] + url
         headers["api-key"] = cfg["hpc"]["apikey"]
         data["name"] = cfg["workflow"]
         data["workflow"] = cfg["cwl"]
 
         res = requests.post(url, headers=headers, data=json.dumps(data))
+        print("===xenon job req res: ", res)
         res_data = json.loads(res.content.decode("utf8"))
     #    print("===xenon job id: ", res_data["id"])
         res_val = res_data["id"]
@@ -528,26 +547,23 @@ class SessionView(APIView):
     def get(self, request, pk, format=None):
         session = self.get_object(pk)
         print("SessionView::get() session.staging={0}\t session.status={1}".format(session.staging, session.status))
-        if session.staging == "completed" and session.status != "Success":
-            if session.status != "Running" and session.status != "Transferring":
-                session.status = "Transferring"
-                self.transfer_data(session)
-                session.save()
-            elif session.status == "Transferring":
-                if self.is_transfer_complete(session):
-                    session.pipeline_response = self.start_computation(session)
-                    session.status = "Running"
-                    session.save()
-            else:
-                if self.is_job_done(session):
-                    self.postprocess(session)
-#            elif self.is_transfer_complete(session):
-#                if session.status == "Waiting":
+#        if session.staging == "completed" and session.status != "Success":
+#            if session.status != "Running" and session.status != "Transferring":
+#                session.status = "Transferring"
+#                self.transfer_data(session)
+#                session.save()
+#            elif session.status == "Transferring":
+#                if self.is_transfer_complete(session):
 #                    session.pipeline_response = self.start_computation(session)
 #                    session.status = "Running"
 #                    session.save()
-#                elif self.is_job_done(session):
+#            else:
+#                if self.is_job_done(session):
 #                    self.postprocess(session)
+        if session.staging == "completed" and session.status != "Running":
+            session.pipeline_response = self.start_computation(session)
+            session.status = "Running"
+            session.save()
         serializer = SessionSerializer(session)
         return Response({'serializer': serializer, 'session': session})
 
