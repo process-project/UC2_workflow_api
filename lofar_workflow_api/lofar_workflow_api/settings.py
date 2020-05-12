@@ -39,8 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'api',
-#    'channels',
-    'fontawesome'
+    'fontawesome_5'
 ]
 
 MIDDLEWARE = [
@@ -136,4 +135,4 @@ MEDIA_ROOT = os.path.join(os.path.dirname(BASE_DIR), 'lofar_workflow_api/images'
 
 # fontawesome
 #FONTAWESOME_CSS_URL = 'api/fontawesome/css/font-awesome.min.css'
-FONTAWESOME_CSS_URL = 'https://use.fontawesome.com/releases/v5.8.1/css/all.css'
+FONTAWESOME_5_CSS = 'https://use.fontawesome.com/releases/v5.8.1/css/all.css'

@@ -1,5 +1,5 @@
 {% load static %}
-{% load fontawesome %}
+{% load fontawesome_5 %}
 <!DOCTYPE html>
 <html>
     <head>
@@ -13,25 +13,25 @@
         <input type="hidden" id="jobstate" name="variable" value="{{ jobState }}">
         <span>
             {% if jobState == 'Waiting' %}
-            {% fontawesome_icon 'pause' color='blue' large=True %}
+            {% fa5_icon 'pause' color='blue' large=True %}
             {% endif %}
             {% if jobState == 'Running' %}
-            {% fontawesome_icon 'cog' %}
+            {% fa5_icon 'cog' %}
             {% endif %}
             {% if jobState == 'Success' %}
-            {% fontawesome_icon 'check' %}
+            {% fa5_icon 'check' %}
             {% endif %}
             {% if jobState == 'Cancelled' %}
-            {% fontawesome_icon 'ban' %}
+            {% fa5_icon 'ban' %}
             {% endif %}
             {% if jobState == 'PermanentFailure' %}
-            {% fontawesome_icon 'times' %}
+            {% fa5_icon 'times' %}
             {% endif %}
             {% if jobState == 'SystemError' %}
-            {% fontawesome_icon 'times' %}
+            {% fa5_icon 'times' %}
             {% endif %}
             {% if jobState == 'TemporaryFailure' %}
-            {% fontawesome_icon 'exclamation-triangle' %}
+            {% fa5_icon 'exclamation-triangle' %}
             {% endif %}
         </span>
     </body>

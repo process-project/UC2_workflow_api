@@ -1,11 +1,10 @@
 {% load static %}
 {% load rest_framework %}
-{% load fontawesome %}
+{% load fontawesome_5 %}
 
 <head>
     <title>Session Viewer</title>
     
-    {% fontawesome_stylesheet %}
     <!--link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous"-->
         
 
@@ -64,24 +63,24 @@
         Xenon-flow Job Status:
         <span>
             {% if session.status == 'Waiting' %}
-            {% fontawesome_icon 'pause' %}
+            {% fa5_icon 'pause' %}
             {% endif %}
             {% if session.status == 'Running' %}
-            {% fontawesome_icon 'cog' %}
+            {% fa5_icon 'cog' %}
             {% endif %}
             {% if session.status == 'Success' %}
-            {% fontawesome_icon 'check' %}
+            {% fa5_icon 'check' %}
             {% endif %}
             {% if session.status == 'Cancelled' %}
-            {% fontawesome_icon 'ban' %}
+            {% fa5_icon 'ban' %}
             {% endif %}
             {% if session.status == 'PermanentFailure' %}
-            {% fontawesome_icon 'times' %}
+            {% fa5_icon 'times' %}
             {% endif %}
             {% if session.status == 'SystemError' %}
-            {% fontawesome_icon 'times' %}
+            {% fa5_icon 'times' %}
             {% endif %}            {% if session.status == 'TemporaryFailure' %}
-            {% fontawesome_icon 'exclamation-triangle' %}
+            {% fa5_icon 'exclamation-triangle' %}
             {% endif %}
         </span>
         ({{ session.status }})

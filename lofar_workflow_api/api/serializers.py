@@ -16,7 +16,8 @@ class SessionSerializer(serializers.Serializer):
     pipeline = serializers.CharField(max_length=100)
     config = serializers.JSONField()
     observation = serializers.CharField(max_length=100000)
-
+    observation2 = serializers.CharField(max_length=100000)
+    
     status = serializers.CharField(max_length = 20, default = "Staging")
     staging = serializers.CharField(max_length = 20, default = "new")
     pipeline_version = serializers.CharField(max_length=100, default = "", read_only=True)
@@ -29,6 +30,9 @@ class SessionSerializer(serializers.Serializer):
     rw_fits = serializers.CharField(max_length=100, default = "")
 #    stageid = serializers.CharField(max_length=30, default = "")
     stage_reqid = serializers.IntegerField(default = 0)
+    stage2_reqid = serializers.IntegerField(default = 0)
+    transfer_id = serializers.IntegerField(default = 0)
+    transfer2_id = serializers.IntegerField(default = 0)
 
 
     def create(self, validated_data):
@@ -40,6 +44,7 @@ class SessionSerializer(serializers.Serializer):
         instance.pipeline = validated_data.get('pipeline', instance.pipeline)
         instance.config = validated_data.get('config', instance.config)
         instance.observation = validated_data.get('observation', instance.observation)
+        instance.observation2 = validated_data.get('observation2', instance.observation2)
 
         instance.pipeline_version = validated_data.get('pipeline_version', instance.pipeline_version)
         instance.pipeline_response = validated_data.get('pipeline_response', instance.pipeline_response)
@@ -54,6 +59,9 @@ class SessionSerializer(serializers.Serializer):
         
 #        instance.stageid = validated_data.get('stageid', instance.stageid)
         instance.stage_reqid = validated_data.get('stage_reqid', instance.stage_reqid)
+        instance.stage2_reqid = validated_data.get('stage2_reqid', instance.stage2_reqid)
+        instance.transfer_id = validated_data.get('transfer_id', instance.transfer_id)
+        instance.transfer2_id = validated_data.get('transfer2_id', instance.transfer2_id)
         
         instance.save()
         return instance

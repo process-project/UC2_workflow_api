@@ -10,6 +10,7 @@ class Session(models.Model):
     pipeline = models.CharField(max_length=100)
     config = JSONField() #config
     observation = models.CharField(max_length=100000)
+    observation2 = models.CharField(max_length=100000)
 
     # Properties set by the API
     pipeline_version = models.CharField(max_length=100)
@@ -27,6 +28,9 @@ class Session(models.Model):
     rw_fits = models.CharField(max_length=100, default = "")
     
     stage_reqid = models.IntegerField(blank=True, null=True)
+    stage2_reqid = models.IntegerField(blank=True, null=True)
+    transfer_id = models.IntegerField(blank=True, null=True)
+    transfer2_id = models.IntegerField(blank=True, null=True)
 
     def __str__(self):
         return "Printing Session object containing: Pipeline={}, Email={}, config={}, date_created={}, description={}".format(self.pipeline, self.email, self.config, self.date_created, self.description)
