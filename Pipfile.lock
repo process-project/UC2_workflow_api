@@ -1,11 +1,11 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "cd080c22b0264fd62f1bd3d9bf8fd9c35079adaea8c82ece34a2b911fbab70cf"
+            "sha256": "d576750e12f417775047be319f78f5200d10a3f70a8349742d889786dfc7c5fa"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_version": "3.7"
+            "python_version": "3.6"
         },
         "sources": [
             {
@@ -145,14 +145,6 @@
                 "sha256:fc323ffcaeaed0e0a02bf4d117757b98aed530d9ed4531e3e15460124c106691"
             ],
             "version": "==3.0.4"
-        },
-        "couchdb": {
-            "hashes": [
-                "sha256:1386a1a43f25bed3667e3b805222054940d674fa1967fa48e9d2012a18630ab7",
-                "sha256:13a28a1159c49f8346732e8724b9a4d65cba54bec017c4a7eeb1499fe88151d1"
-            ],
-            "index": "pypi",
-            "version": "==1.2"
         },
         "cryptography": {
             "hashes": [
@@ -318,10 +310,6 @@
                 "sha256:fccefc0d36a38c57b7bd233a9b485e2f1eb71903ca7ad7adacad6c28a56d62d2"
             ],
             "version": "==1.2.0"
-        },
-        "lgppp-lofar-pipeline": {
-            "git": "https://github.com/EOSC-LOFAR/LGPPP_LOFAR_pipeline.git",
-            "ref": "096e61fc1ad2223196873ddf03369a7922dc2960"
         },
         "lofar-iee-pipeline": {
             "git": "https://github.com/process-project/LOFAR_IEE_pipeline.git",
@@ -632,10 +620,10 @@
         },
         "tifffile": {
             "hashes": [
-                "sha256:393903af4a526b836f630aa7363071f66b3d3c1d8c865ee6693f9603262da8e9",
-                "sha256:af579ef7961752867c5df8ae2ffa1c9b573d7abb283f00f86c1b418fc329e16a"
+                "sha256:1596f7fea8b0939cc286613abd845733000d7c1df523320930e545962a48044d",
+                "sha256:b17dbc3a27229bec8e3c21f8931eb2034ef618b9077d5d00cb7aa8986b376962"
             ],
-            "version": "==2020.9.28"
+            "version": "==2020.9.29"
         },
         "uc2-lofar-pipeline": {
             "git": "https://github.com/process-project/UC2_pipeline.git",

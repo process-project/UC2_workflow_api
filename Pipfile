@@ -4,15 +4,15 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [requires]
-python_version = "3.7"
+python_version = "3.6"
 
 [dev-packages]
 
 [packages]
-couchdb = "*"
+#couchdb = "*"
 django = "*"
 djangorestframework = "*"
-lgppp-lofar-pipeline = {ref = "master",git = "https://github.com/EOSC-LOFAR/LGPPP_LOFAR_pipeline.git"}
+#lgppp-lofar-pipeline = {ref = "master",git = "https://github.com/EOSC-LOFAR/LGPPP_LOFAR_pipeline.git"}
 jsonfield = "*"
 #prefactor-lofar-pipeline = {ref = "master", git = "https://github.com/souley/PROCESS-UC2.git"}
 uc2-lofar-pipeline = {ref = "master", git = "https://github.com/process-project/UC2_pipeline.git"}
