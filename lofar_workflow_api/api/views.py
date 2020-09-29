@@ -375,7 +375,8 @@ class SessionView(APIView):
         cfg = session.config
         headers = {
 #            'Content-Type': 'application/json',
-            'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
+#            'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
+            'Authorization': 'Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiU291bGV5IE1hZG91Z291IiwiZW1haWwiOiJzLm1hZG91Z291QGVzY2llbmNlY2VudGVyLm5sIiwic3ViIjoiNSIsImlzcyI6IklFRSIsImlhdCI6MTU5NzczMDUyOCwibmJmIjoxNTk3NzMwNTI3LCJleHAiOjE1OTc3MzQxMjh9.6pJ-S2rrWQUKmDmSjatPzYETgCJGw3yjSc4tk7Vkz0tMPn5cWpx0mvePZ4zuWCHFW2jFCdWR7RM5FBtKThqCoA'
         }
         hpc = cfg["hpc"]
         oneTar = session.observation.split("|")[0]
@@ -388,6 +389,17 @@ class SessionView(APIView):
         print("===obsid2: ", obsid2)
         data = {
             "steps": [
+                      {
+                      "step_name": "directory_build_step",
+                      "parameters": {}
+                      },
+                      {
+                      "step_name": "staging_in_step",
+                      "parameters": {
+                        "compute_site_name" : "Cyfronet: Prometheus",
+                        "src_path" : "/testing_data_backup"
+                        }
+                      },
                       {
                       "step_name": "lofar_step",
                       "parameters": {
@@ -402,7 +414,18 @@ class SessionView(APIView):
                         "datadir" : hpc["datadir"],
                         "factordir" : hpc["factordir"],
                         "workdir" : hpc["workdir"]
-                      }
+                        }
+                      },
+                      {
+                      "step_name": "staging_out_step",
+                      "parameters": {
+                        "compute_site_name" : "Cyfronet: Prometheus",
+                        "dest_path" : "/LOFAR_results"
+                        }
+                      },
+                      {
+                      "step_name": "clean_up_step",
+                      "parameters": {}
                       }
                     ]
         }
@@ -410,12 +433,14 @@ class SessionView(APIView):
 #        headers["Authorization:"] = " Bearer " + cfg["hpc"]["apikey"]
         print("req data:", data)
         print("req header:", headers)
-        res = requests.post(url, headers=headers, data=json.dumps(data),allow_redirects=False)
-        print("===IEE job req res: ", res)
+        res = requests.post(url, headers=headers, data=json.dumps(data))
+        ritems = res.text.split()
+        print("===IEE job req res: ", ritems[-1])
+#        ritems = res.text.split()
 #        res_data = json.loads(res.content.decode("utf8"))
     #    print("===xenon job id: ", res_data["id"])
 #        res_val = res_data["id"]
-        return res
+        return ritems[-1]
 
 
     """
@@ -428,7 +453,8 @@ class SessionView(APIView):
         headers = {
 #            'Content-Type': 'application/json',
 #            'Authorization': 'Bearer ' + cfg["hpc"]["apikey"]
-            'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
+#            'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
+            'Authorization': 'Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiU291bGV5IE1hZG91Z291IiwiZW1haWwiOiJzLm1hZG91Z291QGVzY2llbmNlY2VudGVyLm5sIiwic3ViIjoiNSIsImlzcyI6IklFRSIsImlhdCI6MTU5NzczMDUyOCwibmJmIjoxNTk3NzMwNTI3LCJleHAiOjE1OTc3MzQxMjh9.6pJ-S2rrWQUKmDmSjatPzYETgCJGw3yjSc4tk7Vkz0tMPn5cWpx0mvePZ4zuWCHFW2jFCdWR7RM5FBtKThqCoA'
         }
         data = {}
         print("SessionView::is_job_done url=", url)
@@ -485,35 +511,35 @@ class SessionView(APIView):
     def get(self, request, pk, format=None):
         session = self.get_object(pk)
         print("SessionView::get() session.staging={0}\t session.status={1}".format(session.staging, session.status))
-#        if session.staging == "completed" and session.status != "Success":
-#            if session.status != "Running" and session.status != "Transferring":
-#                session.status = "Transferring"
-#                self.transfer_data(session)
-#                self.transfer_data(session, False)
-#                session.save()
-#            elif session.status == "Transferring":
-#                if self.all_transfer_done(session):
-#                    if session.pipeline == "UC2FACTOR":
-#                        session.pipeline_response = self.start_computations(session)
-#                    else:
-#                        session.pipeline_response = self.start_iee_computations(session)
-#                    session.status = "Running"
-#                    session.save()
-#            else:
-#                if session.pipeline == "UC2FACTOR":
-#                    if self.is_job_done(session):
-#                        self.postprocess(session)
-#                else:
-#                    if self.is_iee_done(session):
-#                        self.postprocess(session)
-#SM: for testing only
-        if session.staging == "completed" and session.status == "Running":
-            if session.pipeline == "UC2FACTOR":
-                session.pipeline_response = self.start_computations(session)
+        if session.staging == "completed" and session.status != "Success":
+            if session.status != "Running" and session.status != "Transferring":
+                session.status = "Transferring"
+                self.transfer_data(session)
+                self.transfer_data(session, False)
+                session.save()
+            elif session.status == "Transferring":
+                if self.all_transfer_done(session):
+                    if session.pipeline == "UC2FACTOR":
+                        session.pipeline_response = self.start_computations(session)
+                    else:
+                        session.pipeline_response = self.start_iee_computations(session)
+                    session.status = "Running"
+                    session.save()
             else:
-                session.pipeline_response = self.start_iee_computations(session)
-            session.status = "Running"
-            session.save()
+                if session.pipeline == "UC2FACTOR":
+                    if self.is_job_done(session):
+                        self.postprocess(session)
+                else:
+                    if self.is_iee_done(session):
+                        self.postprocess(session)
+##SM: for testing only
+#        if session.staging == "completed" and session.status == "Running":
+#            if session.pipeline == "UC2FACTOR":
+#                session.pipeline_response = self.start_computations(session)
+#            else:
+#                session.pipeline_response = self.start_iee_computations(session)
+#            session.status = "Running"
+#            session.save()
         serializer = SessionSerializer(session)
         return Response({'serializer': serializer, 'session': session})
 
