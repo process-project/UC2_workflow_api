@@ -623,7 +623,7 @@
                 "sha256:1596f7fea8b0939cc286613abd845733000d7c1df523320930e545962a48044d",
                 "sha256:b17dbc3a27229bec8e3c21f8931eb2034ef618b9077d5d00cb7aa8986b376962"
             ],
-            "version": "==2020.9.29"
+            "version": "==2020.9.3"
         },
         "uc2-lofar-pipeline": {
             "git": "https://github.com/process-project/UC2_pipeline.git",
