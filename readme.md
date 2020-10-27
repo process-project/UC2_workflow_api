@@ -1,6 +1,6 @@
-# Readme for LOFAR pipeline REST API
+# UC2 LOFAR workflow REST API
 
-This project has been continued as part of [PROCESS](https://github.com/process-project/lofar_workflow_api).
+This project has been forked from [ESOC](https://github.com/EOSC-LOFAR/lofar_workflow_api).
 
 This is an experiment to see if we can make the LOFAR data more accessible.
 This is a django REST api using the django rest_framework. 
@@ -11,10 +11,10 @@ This is a django REST api using the django rest_framework.
 * Create a venv in which you want to do your things (using python3) or use conda
 * Install django (e.g. pip install django)
 * Install the rest_framework (e.g. pip install djangorestframework)
-* Install all the pipelines (as of 27JUN18 this is: https://github.com/EOSC-LOFAR/LGPPP_LOFAR_pipeline)
+* Install all the pipelines (as of 27OCT20 this is: https://github.com/process-project/UC2_pipeline and https://github.com/process-project/LOFAR_IEE_pipeline)
 * Navigate to the folder containing the manage.py
-* Start your local host: python manage.py runserver
-* You can now send http requests to the localhost:8000. For example in your browser: localhost:8000/sessions/
+* Start your local host: `python3 manage.py runserver`
+* You can now send http requests to the localhost:8000. For example in your browser: `localhost:8000/sessions/`
 
 # Install
 
@@ -24,8 +24,8 @@ Requirements:
 
 Run the following commands to install
 ```
-git clone https://github.com/EOSC-LOFAR/lofar_workflow_api.git
-cd lofar_workflow_api
+git clone https://github.com/process-project/UC2_workflow_api.git
+cd UC2_workflow_api
 pipenv install
 pipenv shell
 cd lofar_workflow_api/
@@ -35,7 +35,7 @@ cd lofar_workflow_api/
 
 Start web service with following command:
 ```
-python manage.py runserver
+python3 manage.py runserver
 ```
 
 Goto http://localhost:8000/sessions
@@ -51,11 +51,13 @@ Check out the jupyter notebook: example_for_lofar_pilot_REST_api.ipynb.
 * A post of a session using the request package could look like this:
 ```python
 	data = {
-			"email": "pipo@popo.com",
+			"email": "jdoe@process.eu",
 			"description": "Add your description to figure out later what this is.",
-			"pipeline" : "LGPPP_LOFAR_pipeline",
-			"config": "{\"avg_freq_step\": 1, \"avg_time_step\": 1, \"do_demix\": 1, \"demix_freq_step\": 1, \"demix_time_step\": 1, \"demix_sources\": 1, \"select_NL\": 1,\"parset\": 1}",
-			"observation": "an observation code",
+			"pipeline" : "UC2_pipeline",
+			"config": {
+            "staging": {"url": "some_url", "login": "jdoe", "pwd": "jdoepass"},                        "hpc": {"headnode": "fs0", "path": "some_path", "url": "url"}
+            }",
+			"cwl": "uc2.cwl",
 			}
 	response = s.post('http://localhost:8000/sessions/', data=data)
 ```
