@@ -55,10 +55,12 @@ Check out the jupyter notebook: example_for_lofar_pilot_REST_api.ipynb.
 			"description": "Add your description to figure out later what this is.",
 			"pipeline" : "UC2_pipeline",
 			"config": {
-            "staging": {"url": "some_url", "login": "jdoe", "pwd": "jdoepass"},                        "hpc": {"headnode": "fs0", "path": "some_path", "url": "url"}
-            }",
+                "staging": {"url": "some_url", "login": "jdoe", "pwd": "jdoepass"},                          
+                "hpc": {"headnode": "fs0", "path": "some_path", "url": "some_url"}
+            },
 			"cwl": "uc2.cwl",
-			}
+        }
+    
 	response = s.post('http://localhost:8000/sessions/', data=data)
 ```
 * You can do a get to pipelineschemas to get a json with pipelines and their schemas like this: 
