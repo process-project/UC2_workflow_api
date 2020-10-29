@@ -31,6 +31,9 @@ import time
 
 import re
 
+# For IEE integration, show LOBCDER WebDAV UC2 files
+from webdav3.client import Client
+
 # Put this on for authentications
 authentication_on = False
 
@@ -453,8 +456,8 @@ class SessionView(APIView):
         headers = {
 #            'Content-Type': 'application/json',
 #            'Authorization': 'Bearer ' + cfg["hpc"]["apikey"]
-#            'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
-            'Authorization': 'Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiU291bGV5IE1hZG91Z291IiwiZW1haWwiOiJzLm1hZG91Z291QGVzY2llbmNlY2VudGVyLm5sIiwic3ViIjoiNSIsImlzcyI6IklFRSIsImlhdCI6MTU5NzczMDUyOCwibmJmIjoxNTk3NzMwNTI3LCJleHAiOjE1OTc3MzQxMjh9.6pJ-S2rrWQUKmDmSjatPzYETgCJGw3yjSc4tk7Vkz0tMPn5cWpx0mvePZ4zuWCHFW2jFCdWR7RM5FBtKThqCoA'
+            'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
+#            'Authorization': 'Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiU291bGV5IE1hZG91Z291IiwiZW1haWwiOiJzLm1hZG91Z291QGVzY2llbmNlY2VudGVyLm5sIiwic3ViIjoiNSIsImlzcyI6IklFRSIsImlhdCI6MTU5NzczMDUyOCwibmJmIjoxNTk3NzMwNTI3LCJleHAiOjE1OTc3MzQxMjh9.6pJ-S2rrWQUKmDmSjatPzYETgCJGw3yjSc4tk7Vkz0tMPn5cWpx0mvePZ4zuWCHFW2jFCdWR7RM5FBtKThqCoA'
         }
         data = {}
         print("SessionView::is_job_done url=", url)
@@ -482,10 +485,10 @@ class SessionView(APIView):
     def fetch_convert(self, session, base, raw=False):
         fits_base = base + str(session.id) + '.fits'
         local_fits = settings.MEDIA_ROOT + '/' + fits_base
-        remote_fits = '/var/scratch/madougou/LOFAR/test/factor/results/fieldmosaic/field/*' + base + '.fits'
-        if raw:
-            remote_fits = '/var/scratch/madougou/LOFAR/PROCESS/imguncal/' + base + '.fits'
-        xenon_cr = 'madougou@fs0.das5.cs.vu.nl'
+        cfg = session.config
+        hpc = cfg["hpc"]
+        remote_fits = hpc["factordir"] + '/results/fieldmosaic/field/*' + base + '.fits'
+        xenon_cr = hpc["headnode"] + '@' + hpc["login"]
         reslog = Connection(xenon_cr).get(remote=remote_fits, local=local_fits)
         print("Downloaded {0.local} from {0.remote}".format(reslog))
         fig = aplpy.FITSFigure(local_fits)
@@ -495,13 +498,28 @@ class SessionView(APIView):
         fig.save(local_fits.replace('.fits', '.jpeg'))
         return fits_base.replace('.fits', '.jpeg')
 
-
+    """
+        Show LOBCDER WebDAV UC2 results endpoint
+    """
+    def show_WebDAV(self, session):
+        cfg = session.config
+        hpc = cfg["hpc"]
+        lobcder = hpc["url"]
+        port = lobcder[lobcder.find(":"):]
+        webdav_host = lobcder.replace(port, "32223")
+        options = {
+            'webdav_hostname': webdav_host,
+            'webdav_login':    "process",
+            'webdav_password': hpc["webdav_pwd"]
+        }
+        client = Client(options)
+        session.rw_fits = client.publish("krk/LOFAR_results")
+    
     """
         Fetch results after job has completed successfully
     """
     def postprocess(self, session):
         session.di_fits = settings.MEDIA_URL + self.fetch_convert(session, 'wsclean_image_full-image.correct_mosaic.pbcor')
-#        session.rw_fits = settings.MEDIA_URL + self.fetch_convert(session, 'P23-uncal-image', True)
         session.save()
 
 
@@ -531,9 +549,9 @@ class SessionView(APIView):
                         self.postprocess(session)
                 else:
                     if self.is_iee_done(session):
-                        self.postprocess(session)
+                        self.show_WebDAV(session)
 ##SM: for testing only
-#        if session.staging == "completed" and session.status == "Running":
+#        if session.staging == "completed" and session.status != "Running":
 #            if session.pipeline == "UC2FACTOR":
 #                session.pipeline_response = self.start_computations(session)
 #            else:
