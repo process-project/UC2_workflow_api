@@ -71,7 +71,6 @@ class CreateSessionsView(APIView):
         Stage target observation
     """
     def stage_observation(self, observation, **kargs):
-        webhook = "http://localhost:8000/sessions"
         tarfiles = observation.split("|")
         srmuris = [] #tarfiles[:20] # testing
         for tfile in tarfiles:
@@ -93,57 +92,42 @@ class CreateSessionsView(APIView):
                 },
                 "credentials": {}
             },
-#            "webhook": {"method": "post", "url": webhook, "headers": {}},
             "options": {},
         }
-    
-        #    print(kargs)
         for kw in kargs:
             if kw == "staging":
                 url = kargs[kw]["url"] + url
                 data["cmd"]["credentials"]["lofarUsername"] = kargs[kw]["login"]
                 data["cmd"]["credentials"]["lofarPassword"] = kargs[kw]["pwd"]
         reqData = json.dumps(data)
-        print("===REQ URL=", url)
-        print("===REQ DATA=", reqData)
         res = requests.post(url, headers=headers, data=reqData)
-        print(res)
         res_data = json.loads(res.content.decode("utf8"))
-        print("Your staging request ID is ", str(res_data["requestId"]))
         return res_data["requestId"]
 
             
     def post(self, request, format=None):
-
+        print("CreateSessionsView::post() ...")
         serializer = SessionSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            print('===Session data from api.views.py')
             id_session = serializer.data["id"]
-            print(id_session)
             current_session = Session.objects.get(pk=id_session)
-
             pipeline_configured = self.check_pipeline_config(current_session.pipeline, current_session.config)
             if pipeline_configured:
-
                 ## The pipeline is executed here
                 pipeline_res = \
                     get_available_pipelines()[current_session.pipeline].run_pipeline(current_session.observation, current_session.observation2, **current_session.config)
-
-#                print(pipeline_res.content) # = b'{"id": "staging", "requestId": 58241}'
-#                res_data = json.loads(pipeline_res.content.decode("utf8"))
-##                current_session.pipeline_version = get_available_pipelines()[current_session.pipeline].give_version()
-#                current_session.stage_reqid = res_data['requestId']
-#                current_session.stage2_reqid = self.stage_observation(current_session.observation2, **current_session.config)
+                if pipeline_res != "": # Using xenon-flow as IEE does not stage nor transfer data
+                    res_data = json.loads(pipeline_res.content.decode("utf8"))
+                    current_session.stage_reqid = res_data['requestId']
+                    current_session.stage2_reqid = self.stage_observation(current_session.observation2, **current_session.config)
                 current_session.save()
-#                #                res_data = json.loads(current_session.pipeline_response.content.decode("utf8"))
                 new_ser = SessionSerializer(current_session)
                 return Response(new_ser.data, status=status.HTTP_201_CREATED)
             else:
                 current_session.delete()
                 return Response("Pipeline unknown or pipeline wrongly configured. Nothing was done", \
                                 status=status.HTTP_400_BAD_REQUEST)
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -163,7 +147,6 @@ class SessionView(APIView):
         headers = {
             'Content-Type': 'application/json'
         }
-        #        print('=SessionView::get_object() pp cfg: ', session.config)
         data = {
             "cmd": {
                 "requestId": reqid,
@@ -173,16 +156,12 @@ class SessionView(APIView):
                 }
             }
         }
-        print("=SessionView::get_staging_state() req data", data)
         res = requests.post(url, headers=headers, data=json.dumps(data))
         if res.status_code == requests.codes.ok:
-            print("=SessionView::get_staging_state() res raw data", res.content)
             res_data = json.loads(res.content.decode("utf8"))
-            print("=SessionView::get_staging_state() res json", res_data)
             staging_id = str(reqid)
             if res_data:
                 staging_state = res_data[staging_id]["status"]
-                print("=SessionView::get_staging_state() staging status: ", staging_state)
         return staging_state
 
 
@@ -195,13 +174,14 @@ class SessionView(APIView):
             session = Session.objects.get(pk=pk)
         except Session.DoesNotExist:
             raise Http404
-        staging_state = self.get_staging_state(session, session.stage_reqid)
-        staging2_state = self.get_staging_state(session, session.stage2_reqid)
-        if (staging_state == "completed" or not staging_state) and (staging2_state == "completed" or not staging2_state):
+        if session.pipeline == "UC2FACTOR":
+            staging_state = self.get_staging_state(session, session.stage_reqid)
+            staging2_state = self.get_staging_state(session, session.stage2_reqid)
+            if (staging_state == "completed" or not staging_state) and (staging2_state == "completed" or not staging2_state):
+                session.staging = "completed"
+        else:
             session.staging = "completed"
-#            session.status = "Transferring"
-#            session.pipeline_response = "StagingDone"
-            session.save()
+        session.save()
         return session
 
 
@@ -209,8 +189,6 @@ class SessionView(APIView):
         Do transfer to HPC when staging completes
     """
     def transfer_data(self, session, isCal=True):
-        print("=SessionView::transfer_data() staging complete, start transferring ...")
-#        srmuris = ["srm://srm.grid.sara.nl:8443/pnfs/grid.sara.nl/data/lofar/ops/projects/lofarschool/246403/L246403_SAP000_SB000_uv.MS_7d4aa18f.tar"]
         tarfiles = session.observation.split("|") if isCal else session.observation2.split("|")
         srmuris = [] #tarfiles[:20] # testing
         for tfile in tarfiles:
@@ -244,14 +222,9 @@ class SessionView(APIView):
                 }
             }
         }
-        print("=SessionView::transfer_data() payload: ", data)
         res = requests.post(url, headers=headers, data=json.dumps(data))
-        print("=SessionView::transfer_data() res raw: ", res.content)
-        print("=SessionView::transfer_data() res status_code: ", res.status_code)
         if res.status_code == requests.codes.ok or res.status_code == 202:
-            print("=SessionView::transfer_data() res raw2: ", res.content)
             res_data = json.loads(res.content.decode("utf8"))
-            print("=SessionView::transfer_data() res json: ", res_data)
             if isCal:
                 session.transfer_id = res_data['identifier']
             else:
@@ -263,21 +236,14 @@ class SessionView(APIView):
         Checks whether transfer has completed
     """
     def is_transfer_complete(self, session, tid):
-        print("=SessionView::is_transfer_complete() pp_resp: ", tid)
         url = session.config["hpc"]["url"] + "/status/" + str(tid)
         headers = {
             'Content-Type': 'application/json'
         }
         res = requests.get(url, headers=headers)
-        print("=SessionView::is_transfer_complete() res raw: ", res.content)
         if res.status_code == requests.codes.ok:
-            print("=SessionView::is_transfer_complete() res raw2: ", res.content)
             res_data = json.loads(res.content.decode("utf8"))
-            print("=SessionView::is_transfer_complete() res json: ", res_data)
-            print("=SessionView::is_transfer_complete() id:", res_data['identifier'], "\tstatus:", res_data['status'])
             if int(tid) == int(res_data['identifier']) and "complete" == res_data['status'].strip():
-#                session.status = "TransferDone"
-#                session.save()
                 return True
         return False
 
@@ -286,7 +252,6 @@ class SessionView(APIView):
         Checks whether all transfers have completed
         """
     def all_transfer_done(self, session):
-        print("=SessionView::all_transfer_done()")
         if self.is_transfer_complete(session, session.transfer_id) and self.is_transfer_complete(session, session.transfer2_id):
             session.status = "TransferDone"
             session.save()
@@ -308,23 +273,18 @@ class SessionView(APIView):
         oneTar = session.observation.split("|")[0]
         oneMS = oneTar.split("/")[-1]
         obsid = oneMS.split("_")[0][1:]
-        print("===obsid: ", obsid)
         oneTar = session.observation2.split("|")[0]
         oneMS = oneTar.split("/")[-1]
         obsid2 = oneMS.split("_")[0][1:]
-        print("===obsid2: ", obsid2)
         data = {
             "input": {
                 "calms": obsid,
                 "tarms": obsid2,
-#                "templatedir": hpc["templatedir"],
                 "factordir": hpc["factordir"],
-#                "prefactor": hpc["prefactor"],
                 "workdir": hpc["workdir"],
                 "datadir": hpc["datadir"],
                 "container": hpc["container"],
                 "binddir": hpc["binddir"]
-#                "WMS": hpc["WMS"]
             }
         }
         url = cfg["hpc"]["xenon"] + url
@@ -333,9 +293,7 @@ class SessionView(APIView):
         data["workflow"] = cfg["cwl"]
 
         res = requests.post(url, headers=headers, data=json.dumps(data))
-        print("===xenon job req res: ", res)
         res_data = json.loads(res.content.decode("utf8"))
-    #    print("===xenon job id: ", res_data["id"])
         res_val = res_data["id"]
         return res_val
 
@@ -344,7 +302,6 @@ class SessionView(APIView):
         Checks whether job has completed successfully
     """
     def is_job_done(self, session):
-        print('=SessionView::is_job_done() pp res: ', session.pipeline_response)
         url = 'http://localhost:8443/jobs/' + session.pipeline_response
         cfg = session.config
         headers = {
@@ -352,21 +309,14 @@ class SessionView(APIView):
             'api-key': cfg["hpc"]["apikey"]
         }
         data = {}
-        print("SessionView::is_job_done url=", url)
-        print("SessionView::is_job_done header=", headers)
         res = requests.get(url, headers=headers, data=json.dumps(data))
-        print(res.content)
         if res.content != b'':
             res_data = json.loads(res.content.decode("utf8"))
             session.status = res_data['state']
-            print('===session status', session.status)
-            print(res_data)
         else:
             session.status == "Success"
-#            session.pipeline_response = "JobDone"
         session.save()
         if session.status == "Success":
-#            session.save()
             return True
         return False
 
@@ -376,73 +326,86 @@ class SessionView(APIView):
     """
     def start_iee_computations(self, session):
         cfg = session.config
+        hpc = cfg["hpc"]
         headers = {
 #            'Content-Type': 'application/json',
-#            'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
-            'Authorization': 'Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiU291bGV5IE1hZG91Z291IiwiZW1haWwiOiJzLm1hZG91Z291QGVzY2llbmNlY2VudGVyLm5sIiwic3ViIjoiNSIsImlzcyI6IklFRSIsImlhdCI6MTU5NzczMDUyOCwibmJmIjoxNTk3NzMwNTI3LCJleHAiOjE1OTc3MzQxMjh9.6pJ-S2rrWQUKmDmSjatPzYETgCJGw3yjSc4tk7Vkz0tMPn5cWpx0mvePZ4zuWCHFW2jFCdWR7RM5FBtKThqCoA'
+            'Authorization': 'Bearer {}'.format(hpc["apikey"])
         }
-        hpc = cfg["hpc"]
         oneTar = session.observation.split("|")[0]
         oneMS = oneTar.split("/")[-1]
         obsid = oneMS.split("_")[0][1:]
-        print("===obsid: ", obsid)
         oneTar = session.observation2.split("|")[0]
         oneMS = oneTar.split("/")[-1]
         obsid2 = oneMS.split("_")[0][1:]
-        print("===obsid2: ", obsid2)
+#        data = {
+#            "steps": [
+#                      {
+#                      "step_name": "directory_build_step",
+#                      "parameters": {}
+#                      },
+#                      {
+#                      "step_name": "staging_in_step",
+#                      "parameters": {
+#                        "compute_site_name" : "Cyfronet: Prometheus",
+#                        "src_path" : "/testing_data_backup"
+#                        }
+#                      },
+#                      {
+#                      "step_name": "lofar_step",
+#                      "parameters": {
+#                        "container_name" : hpc["container"],
+#                        "container_tag" : "latest",
+#                        "compute_site_name" : hpc["compute_site"],
+#                        "nodes" : "1",
+#                        "cpus" : "24",
+#                        "partition" : "plgrid",
+#                        "calms" : obsid,
+#                        "tarms" : obsid2,
+#                        "datadir" : hpc["datadir"],
+#                        "factordir" : hpc["factordir"],
+#                        "workdir" : hpc["workdir"]
+#                        }
+#                      },
+#                      {
+#                      "step_name": "staging_out_step",
+#                      "parameters": {
+#                        "compute_site_name" : "Cyfronet: Prometheus",
+#                        "dest_path" : "/LOFAR_results"
+#                        }
+#                      },
+#                      {
+#                      "step_name": "clean_up_step",
+#                      "parameters": {}
+#                      }
+#                    ]
+#        }
+
         data = {
             "steps": [
-                      {
-                      "step_name": "directory_build_step",
-                      "parameters": {}
-                      },
-                      {
-                      "step_name": "staging_in_step",
-                      "parameters": {
-                        "compute_site_name" : "Cyfronet: Prometheus",
-                        "src_path" : "/testing_data_backup"
-                        }
-                      },
-                      {
-                      "step_name": "lofar_step",
-                      "parameters": {
-                        "container_name" : hpc["container"],
-                        "container_tag" : "latest",
-                        "compute_site_name" : hpc["compute_site"],
-                        "nodes" : "1",
-                        "cpus" : "24",
-                        "partition" : "plgrid",
-                        "calms" : obsid,
-                        "tarms" : obsid2,
-                        "datadir" : hpc["datadir"],
-                        "factordir" : hpc["factordir"],
-                        "workdir" : hpc["workdir"]
-                        }
-                      },
-                      {
-                      "step_name": "staging_out_step",
-                      "parameters": {
-                        "compute_site_name" : "Cyfronet: Prometheus",
-                        "dest_path" : "/LOFAR_results"
-                        }
-                      },
-                      {
-                      "step_name": "clean_up_step",
-                      "parameters": {}
-                      }
-                    ]
+                {
+                  "step_name": "workaround_lofar_step",
+                  "parameters": {
+                      "container_name": hpc["container"],
+                      "container_tag": "latest",
+                      "compute_site_name": hpc["compute_site"],
+                      "nodes": 1,
+                      "time": 20,
+                      "cpus": 24,
+                      "partition": "plgrid",
+                      "calms": obsid,
+                      "tarms": obsid2,
+                      "datadir": hpc["datadir"],
+                      "factordir": hpc["factordir"],
+                      "workdir": hpc["datadir"],
+                      "src_path": "testing_data_backup",
+                      "dest_path": "API_TEST_LOFAR_RESULTS"
+                    }
+                }
+              ]
         }
-        url = cfg["hpc"]["serviceurl"]
-#        headers["Authorization:"] = " Bearer " + cfg["hpc"]["apikey"]
-        print("req data:", data)
-        print("req header:", headers)
+        url = hpc["serviceurl"]
         res = requests.post(url, headers=headers, data=json.dumps(data))
         ritems = res.text.split()
-        print("===IEE job req res: ", ritems[-1])
-#        ritems = res.text.split()
-#        res_data = json.loads(res.content.decode("utf8"))
-    #    print("===xenon job id: ", res_data["id"])
-#        res_val = res_data["id"]
         return ritems[-1]
 
 
@@ -450,31 +413,21 @@ class SessionView(APIView):
         Checks whether job has completed successfully
     """
     def is_iee_done(self, session):
-        print('=SessionView::is_iee_done() pp res: ', session.pipeline_response)
         cfg = session.config
         url = cfg["hpc"]["serviceurl"] + '/' + session.pipeline_response
         headers = {
 #            'Content-Type': 'application/json',
-#            'Authorization': 'Bearer ' + cfg["hpc"]["apikey"]
             'Authorization': 'Bearer {}'.format(cfg["hpc"]["apikey"])
-#            'Authorization': 'Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiU291bGV5IE1hZG91Z291IiwiZW1haWwiOiJzLm1hZG91Z291QGVzY2llbmNlY2VudGVyLm5sIiwic3ViIjoiNSIsImlzcyI6IklFRSIsImlhdCI6MTU5NzczMDUyOCwibmJmIjoxNTk3NzMwNTI3LCJleHAiOjE1OTc3MzQxMjh9.6pJ-S2rrWQUKmDmSjatPzYETgCJGw3yjSc4tk7Vkz0tMPn5cWpx0mvePZ4zuWCHFW2jFCdWR7RM5FBtKThqCoA'
         }
         data = {}
-        print("SessionView::is_job_done url=", url)
-        print("SessionView::is_job_done header=", headers)
         res = requests.get(url, headers=headers, data=json.dumps(data))
-        print(res.content)
         if res.content != b'':
             res_data = json.loads(res.content.decode("utf8"))
-            session.status = res_data['lofar_step']
-            print('===session status', session.status)
-            print(res_data)
+            session.status = res_data['workaround_lofar_step']
         else:
             session.status == "finished"
-#            session.pipeline_response = "JobDone"
         session.save()
         if session.status == "finished":
-#            session.save()
             return True
         return False
 
@@ -529,28 +482,30 @@ class SessionView(APIView):
     def get(self, request, pk, format=None):
         session = self.get_object(pk)
         print("SessionView::get() session.staging={0}\t session.status={1}".format(session.staging, session.status))
-        if session.staging == "completed" and session.status != "Success":
-            if session.status != "Running" and session.status != "Transferring":
-                session.status = "Transferring"
-                self.transfer_data(session)
-                self.transfer_data(session, False)
-                session.save()
-            elif session.status == "Transferring":
-                if self.all_transfer_done(session):
-                    if session.pipeline == "UC2FACTOR":
-                        session.pipeline_response = self.start_computations(session)
-                    else:
-                        session.pipeline_response = self.start_iee_computations(session)
-                    session.status = "Running"
+        if session.pipeline == "UC2FACTOR":
+            if session.staging == "completed" and session.status != "Success":
+                if session.status != "Running" and session.status != "Transferring":
+                    session.status = "Transferring"
+                    self.transfer_data(session)
+                    self.transfer_data(session, False)
                     session.save()
-            else:
-                if session.pipeline == "UC2FACTOR":
+                elif session.status == "Transferring":
+                    if self.all_transfer_done(session):
+                        session.pipeline_response = self.start_computations(session)
+                        session.status = "Running"
+                        session.save()
+                else:
                     if self.is_job_done(session):
                         self.postprocess(session)
-                else:
-                    if self.is_iee_done(session):
-                        self.show_WebDAV(session)
-##SM: for testing only
+        else: # Assuming IEE
+            if session.status != "Success" and session.status != "Running":
+                session.pipeline_response = self.start_iee_computations(session)
+                session.status = "Running"
+                session.save()
+            elif session.status == "Running":
+                if self.is_iee_done(session):
+                    self.show_WebDAV(session)
+###SM: for testing only
 #        if session.staging == "completed" and session.status != "Running":
 #            if session.pipeline == "UC2FACTOR":
 #                session.pipeline_response = self.start_computations(session)
