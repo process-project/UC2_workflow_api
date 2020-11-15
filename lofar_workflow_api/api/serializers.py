@@ -15,8 +15,8 @@ class SessionSerializer(serializers.Serializer):
     description = serializers.CharField(max_length=1000, default = "")
     pipeline = serializers.CharField(max_length=100)
     config = serializers.JSONField()
-    observation = serializers.CharField(max_length=100000)
-    observation2 = serializers.CharField(max_length=100000)
+    observation = serializers.CharField(max_length=100000, default = "")
+    observation2 = serializers.CharField(max_length=100000, default = "")
     
     status = serializers.CharField(max_length = 20, default = "Staging")
     staging = serializers.CharField(max_length = 20, default = "new")

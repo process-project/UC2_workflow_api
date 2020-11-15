@@ -106,7 +106,6 @@ class CreateSessionsView(APIView):
 
             
     def post(self, request, format=None):
-        print("CreateSessionsView::post() ...")
         serializer = SessionSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -218,7 +217,8 @@ class SessionView(APIView):
                 },
                 "options": {
                     "partitions": 2,
-                    "parallelism": 2
+                    "parallelism": 2,
+                    "log": "true"
                 }
             }
         }
@@ -396,7 +396,7 @@ class SessionView(APIView):
                       "tarms": obsid2,
                       "datadir": hpc["datadir"],
                       "factordir": hpc["factordir"],
-                      "workdir": hpc["datadir"],
+                      "workdir": hpc["workdir"],
                       "src_path": "testing_data_backup",
                       "dest_path": "API_TEST_LOFAR_RESULTS"
                     }
@@ -421,11 +421,13 @@ class SessionView(APIView):
         }
         data = {}
         res = requests.get(url, headers=headers, data=json.dumps(data))
+        print("SessionDetail::is_iee_done() res.content: ", res.content)
         if res.content != b'':
             res_data = json.loads(res.content.decode("utf8"))
             session.status = res_data['workaround_lofar_step']
         else:
-            session.status == "finished"
+            session.status = "finished"
+        print("SessionDetail::is_iee_done() session status: ".format(session.status))
         session.save()
         if session.status == "finished":
             return True
@@ -441,7 +443,7 @@ class SessionView(APIView):
         cfg = session.config
         hpc = cfg["hpc"]
         remote_fits = hpc["factordir"] + '/results/fieldmosaic/field/*' + base + '.fits'
-        xenon_cr = hpc["headnode"] + '@' + hpc["login"]
+        xenon_cr = hpc["login"] + '@' + hpc["headnode"]
         reslog = Connection(xenon_cr).get(remote=remote_fits, local=local_fits)
         print("Downloaded {0.local} from {0.remote}".format(reslog))
         fig = aplpy.FITSFigure(local_fits)
@@ -466,7 +468,7 @@ class SessionView(APIView):
             'webdav_password': hpc["webdav_pwd"]
         }
         client = Client(options)
-        session.rw_fits = client.publish("krk/LOFAR_results")
+        session.rw_fits = client.list("krk/LOFAR_results")
     
     """
         Fetch results after job has completed successfully
@@ -506,13 +508,15 @@ class SessionView(APIView):
                 if self.is_iee_done(session):
                     self.show_WebDAV(session)
 ###SM: for testing only
-#        if session.staging == "completed" and session.status != "Running":
-#            if session.pipeline == "UC2FACTOR":
+#        if session.pipeline == "UC2FACTOR":
+#            if session.staging == "completed" and session.status != "Success":
 #                session.pipeline_response = self.start_computations(session)
-#            else:
-#                session.pipeline_response = self.start_iee_computations(session)
-#            session.status = "Running"
-#            session.save()
+#                session.status = "Running"
+#                session.save()
+#            elif session.status == "Running":
+#                if self.is_job_done(session):
+#                    self.postprocess(session)
+#                    session.save()
         serializer = SessionSerializer(session)
         return Response({'serializer': serializer, 'session': session})
 
