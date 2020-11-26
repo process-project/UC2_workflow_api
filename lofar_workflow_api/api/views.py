@@ -380,33 +380,80 @@ class SessionView(APIView):
 #                    ]
 #        }
 
+# Using the workaround fast container
+#        data = {
+#            "steps": [
+#                {
+#                  "step_name": "workaround_lofar_step",
+#                  "parameters": {
+#                      "container_name": hpc["container"],
+#                      "container_tag": "latest",
+#                      "compute_site_name": hpc["compute_site"],
+#                      "nodes": 1,
+#                      "time": 20,
+#                      "cpus": 24,
+#                      "partition": "plgrid",
+#                      "calms": obsid,
+#                      "tarms": obsid2,
+#                      "datadir": hpc["datadir"],
+#                      "factordir": hpc["factordir"],
+#                      "workdir": hpc["workdir"],
+#                      "src_path": "testing_data_backup",
+#                      "dest_path": "API_TEST_LOFAR_RESULTS"
+#                    }
+#                }
+#              ]
+#        }
+
+# Using the fast container
         data = {
             "steps": [
-                {
-                  "step_name": "workaround_lofar_step",
-                  "parameters": {
-                      "container_name": hpc["container"],
-                      "container_tag": "latest",
-                      "compute_site_name": hpc["compute_site"],
-                      "nodes": 1,
-                      "time": 20,
-                      "cpus": 24,
-                      "partition": "plgrid",
-                      "calms": obsid,
-                      "tarms": obsid2,
-                      "datadir": hpc["datadir"],
-                      "factordir": hpc["factordir"],
-                      "workdir": hpc["workdir"],
-                      "src_path": "testing_data_backup",
-                      "dest_path": "API_TEST_LOFAR_RESULTS"
-                    }
-                }
-              ]
+                      {
+                      "step_name": "staging_in_step",
+                      "parameters": {
+                        "src_compute_site_name" : hpc["compute_site"],
+                        "src_path" : "testing_data_backup"
+                        }
+                      },
+                      {
+                      "step_name": "lofar_step",
+                      "parameters": {
+                        "container_name" : hpc["container"],
+                        "container_tag" : "latest",
+                        "compute_site_name" : hpc["compute_site"],
+                        "nodes" : "1",
+                        "time": hpc["exp_time"],
+                        "cpus" : "24",
+                        "partition" : "plgrid",
+                        "calms" : obsid,
+                        "tarms" : obsid2,
+                        "datadir" : hpc["datadir"],
+                        "factordir" : hpc["factordir"],
+                        "workdir" : hpc["workdir"]
+                        }
+                      },
+                      {
+                      "step_name": "staging_out_step",
+                      "parameters": {
+                        "dest_compute_site_name" : hpc["compute_site"],
+                        "dest_path" : "/LOFAR_results"
+                        }
+                      }
+                    ]
         }
         url = hpc["serviceurl"]
-        res = requests.post(url, headers=headers, data=json.dumps(data))
-        ritems = res.text.split()
-        return ritems[-1]
+#        print("start_iee_comp::req.url=", url)
+#        print("start_iee_comp::req.headers=", headers)
+        try:
+            res = requests.post(url, headers=headers, data=json.dumps(data))
+#            print("start_iee_comp::res.content=", res.content, ", res.text=", res.text, ", res.status_code=", res.status_code)
+            if res.status_code == requests.codes.ok:
+                ritems = res.text.split()
+                if len(ritems) >= 1:
+                    return ritems[-1]
+        except Exception as err:
+            print('start_iee_comp::an error occurred: {err}')
+        return "-1"
 
 
     """
@@ -421,13 +468,13 @@ class SessionView(APIView):
         }
         data = {}
         res = requests.get(url, headers=headers, data=json.dumps(data))
-        print("SessionDetail::is_iee_done() res.content: ", res.content)
+#        print("SessionDetail::is_iee_done() res.content: ", res.content)
         if res.content != b'':
             res_data = json.loads(res.content.decode("utf8"))
-            session.status = res_data['workaround_lofar_step']
+            session.status = res_data['staging_out_step']
         else:
             session.status = "finished"
-        print("SessionDetail::is_iee_done() session status: ".format(session.status))
+#        print("SessionDetail::is_iee_done() session status: ".format(session.status))
         session.save()
         if session.status == "finished":
             return True
