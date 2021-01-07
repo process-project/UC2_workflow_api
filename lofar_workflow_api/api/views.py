@@ -124,6 +124,7 @@ class CreateSessionsView(APIView):
                 new_ser = SessionSerializer(current_session)
                 return Response(new_ser.data, status=status.HTTP_201_CREATED)
             else:
+                print("CreateSessionsView::post() pipeline not well configured ...")
                 current_session.delete()
                 return Response("Pipeline unknown or pipeline wrongly configured. Nothing was done", \
                                 status=status.HTTP_400_BAD_REQUEST)
@@ -442,11 +443,8 @@ class SessionView(APIView):
                     ]
         }
         url = hpc["serviceurl"]
-#        print("start_iee_comp::req.url=", url)
-#        print("start_iee_comp::req.headers=", headers)
         try:
             res = requests.post(url, headers=headers, data=json.dumps(data))
-#            print("start_iee_comp::res.content=", res.content, ", res.text=", res.text, ", res.status_code=", res.status_code)
             if res.status_code == requests.codes.ok:
                 ritems = res.text.split()
                 if len(ritems) >= 1:
@@ -468,13 +466,11 @@ class SessionView(APIView):
         }
         data = {}
         res = requests.get(url, headers=headers, data=json.dumps(data))
-#        print("SessionDetail::is_iee_done() res.content: ", res.content)
         if res.content != b'':
             res_data = json.loads(res.content.decode("utf8"))
             session.status = res_data['staging_out_step']
         else:
             session.status = "finished"
-#        print("SessionDetail::is_iee_done() session status: ".format(session.status))
         session.save()
         if session.status == "finished":
             return True
@@ -489,7 +485,7 @@ class SessionView(APIView):
         local_fits = settings.MEDIA_ROOT + '/' + fits_base
         cfg = session.config
         hpc = cfg["hpc"]
-        remote_fits = hpc["factordir"] + '/results/fieldmosaic/field/*' + base + '.fits'
+        remote_fits = hpc["factordir"] + '/results/fieldmosaic/field/L232875_SB000_uv.dppp_124B2FCD4t_123MHz.pre-cal_chunk3.' + base + '.fits'
         xenon_cr = hpc["login"] + '@' + hpc["headnode"]
         reslog = Connection(xenon_cr).get(remote=remote_fits, local=local_fits)
         print("Downloaded {0.local} from {0.remote}".format(reslog))
@@ -554,9 +550,9 @@ class SessionView(APIView):
             elif session.status == "Running":
                 if self.is_iee_done(session):
                     self.show_WebDAV(session)
-###SM: for testing only
+##SM: for testing only
 #        if session.pipeline == "UC2FACTOR":
-#            if session.staging == "completed" and session.status != "Success":
+#            if session.staging == "completed" and session.status != "Running":
 #                session.pipeline_response = self.start_computations(session)
 #                session.status = "Running"
 #                session.save()
